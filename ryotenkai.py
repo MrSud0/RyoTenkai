@@ -67,6 +67,7 @@ def parse_arguments(config):
     rpc_parser.add_argument('--rpc-user', help='Username for the RPC server.', default='msf')
     rpc_parser.add_argument('--rpc-password', help='Password for the RPC server.', default='msfrpc')
     rpc_parser.add_argument('--rpc-port', help='Port for the RPC server.', type=int, default=55552)
+    rpc_parser.add_argument('--rpc-ssl', action='store_true',default=False, help='Use SSL for RPC connection.')
 
 
     return parser.parse_args()
@@ -137,10 +138,13 @@ def run_exploit(client, module_name, options, regex=None):
 
     
 # Functionality to start the RPC server
-def start_rpc_server(rpc_password, rpc_port):
+def start_rpc_server(rpc_password, rpc_port, rpc_ssl):
     try:
         # Command to start Metasploit RPC server
-        command = ['msfrpcd', '-P', rpc_password, '-p', str(rpc_port), '-S']
+        if rpc_ssl:
+            command = ['msfrpcd', '-P', rpc_password, '-p', str(rpc_port)]
+        else:
+            command = ['msfrpcd', '-P', rpc_password, '-p', str(rpc_port), '-S']
         logging.info(f"Starting Metasploit RPC server with command: {' '.join(command)}")
         subprocess.run(command, check=True)
         logging.info("Metasploit RPC server started successfully.")
@@ -266,7 +270,7 @@ if __name__ == "__main__":
     args = parse_arguments(config)
 
     if args.command == 'start_rpc':
-        start_rpc_server(args.rpc_password, args.rpc_port)
+        start_rpc_server(args.rpc_password, args.rpc_port, args.rpc_ssl)
 
     else:
 
