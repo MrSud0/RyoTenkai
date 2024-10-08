@@ -26,21 +26,21 @@ def parse_arguments(config):
     run_parser.add_argument('module', help='The Metasploit module to use (e.g., exploit/multi/script/web_delivery).')
     run_parser.add_argument('--option', action='append', help='Module options in the form OPTION=VALUE.', required=True)
     run_parser.add_argument('--regex', help='Regex pattern to filter output.', default=config.get('regex', r"Run the following command on the target machine:\n(.*)"))
-    run_parser.add_argument('--msf-password', help='The password for the Metasploit RPC server.', default=config.get('msf_password', 'msfrpc'))
+    run_parser.add_argument('--rpc-password', help='The password for the Metasploit RPC server.', default=config.get('rpc_password', 'msfrpc'))
     run_parser.add_argument('--rpc-server', help='The Metasploit RPC server address.', default=config.get('rpc_server', '127.0.0.1'))
     run_parser.add_argument('--rpc-port', help='The Metasploit RPC server port.', type=int, default=int(config.get('rpc_port', 55552)))
     run_parser.add_argument('--rpc-ssl', action='store_true', help='Use SSL for RPC connection.')
 
     # Get jobs
     jobs_parser = subparsers.add_parser('get_jobs', help='Poll the active Metasploit jobs.')
-    jobs_parser.add_argument('--msf-password', help='The password for the Metasploit RPC server.', default=config.get('msf_password', 'msfrpc'))
+    jobs_parser.add_argument('--rpc-password', help='The password for the Metasploit RPC server.', default=config.get('rpc_password', 'msfrpc'))
     jobs_parser.add_argument('--rpc-server', help='The Metasploit RPC server address.', default=config.get('rpc_server', '127.0.0.1'))
     jobs_parser.add_argument('--rpc-port', help='The Metasploit RPC server port.', type=int, default=int(config.get('rpc_port', 55552)))
     jobs_parser.add_argument('--rpc-ssl', action='store_true', help='Use SSL for RPC connection.')
 
     # Get sessions
     sessions_parser = subparsers.add_parser('get_sessions', help='Poll the active Metasploit sessions.')
-    sessions_parser.add_argument('--msf-password', help='The password for the Metasploit RPC server.', default=config.get('msf_password', 'msfrpc'))
+    sessions_parser.add_argument('--rpc-password', help='The password for the Metasploit RPC server.', default=config.get('rpc_password', 'msfrpc'))
     sessions_parser.add_argument('--rpc-server', help='The Metasploit RPC server address.', default=config.get('rpc_server', '127.0.0.1'))
     sessions_parser.add_argument('--rpc-port', help='The Metasploit RPC server port.', type=int, default=int(config.get('rpc_port', 55552)))
     sessions_parser.add_argument('--rpc-ssl', action='store_true', help='Use SSL for RPC connection.')
@@ -49,7 +49,7 @@ def parse_arguments(config):
     access_parser = subparsers.add_parser('run_command', help='Access a Metasploit session and run a command.')
     access_parser.add_argument('session_id', help='The ID of the session to access.')
     access_parser.add_argument('commands', nargs='+', help='The command(s) to run in the session.')
-    access_parser.add_argument('--msf-password', help='The password for the Metasploit RPC server.', default=config.get('msf_password', 'msfrpc'))
+    access_parser.add_argument('--rpc-password', help='The password for the Metasploit RPC server.', default=config.get('rpc_password', 'msfrpc'))
     access_parser.add_argument('--rpc-server', help='The Metasploit RPC server address.', default=config.get('rpc_server', '127.0.0.1'))
     access_parser.add_argument('--rpc-port', help='The Metasploit RPC server port.', type=int, default=int(config.get('rpc_port', 55552)))
     access_parser.add_argument('--rpc-ssl', action='store_true', help='Use SSL for RPC connection.')
@@ -65,6 +65,7 @@ def parse_arguments(config):
     # Start RPC Server
     rpc_parser = subparsers.add_parser('start_rpc', help='Start the Metasploit RPC server.')
     rpc_parser.add_argument('--rpc-user', help='Username for the RPC server.', default='msf')
+    rpc_parser.add_argument('--rpc-server', help='Username for the RPC server.', default='0.0.0.0')
     rpc_parser.add_argument('--rpc-password', help='Password for the RPC server.', default='msfrpc')
     rpc_parser.add_argument('--rpc-port', help='Port for the RPC server.', type=int, default=55552)
     rpc_parser.add_argument('--rpc-ssl', action='store_true',default=False, help='Use SSL for RPC connection.')
@@ -138,7 +139,7 @@ def run_exploit(client, module_name, options, regex=None):
 
     
 # Functionality to start the RPC server
-def start_rpc_server(rpc_password, rpc_port, rpc_ssl):
+def start_rpc_server(rpc_password, rpc_port, rpc_ssl, rpc_user, rpc_server):
     try:
         # Command to start Metasploit RPC server
         if rpc_ssl:
@@ -270,12 +271,12 @@ if __name__ == "__main__":
     args = parse_arguments(config)
 
     if args.command == 'start_rpc':
-        start_rpc_server(args.rpc_password, args.rpc_port, args.rpc_ssl)
+        start_rpc_server(args.rpc_password, args.rpc_port, args.rpc_ssl, args.rpc_user, args.rpc_server)
 
     else:
 
         if args.command == 'run_module':
-            client = MsfRpcClient(args.msf_password, server=args.rpc_server, port=args.rpc_port, ssl=args.rpc_ssl)
+            client = MsfRpcClient(args.rpc_password, server=args.rpc_server, port=args.rpc_port, ssl=args.rpc_ssl)
 
             options = {}
             for opt in args.option:
@@ -284,17 +285,17 @@ if __name__ == "__main__":
             run_exploit(client, args.module, options, args.regex)
 
         elif args.command == 'get_jobs':
-            client = MsfRpcClient(args.msf_password, server=args.rpc_server, port=args.rpc_port, ssl=args.rpc_ssl)
+            client = MsfRpcClient(args.rpc_password, server=args.rpc_server, port=args.rpc_port, ssl=args.rpc_ssl)
 
             get_jobs(client)
 
         elif args.command == 'get_sessions':
-            client = MsfRpcClient(args.msf_password, server=args.rpc_server, port=args.rpc_port, ssl=args.rpc_ssl)
+            client = MsfRpcClient(args.rpc_password, server=args.rpc_server, port=args.rpc_port, ssl=args.rpc_ssl)
 
             get_sessions(client)
 
         elif args.command == 'run_command':
-            client = MsfRpcClient(args.msf_password, server=args.rpc_server, port=args.rpc_port, ssl=args.rpc_ssl)
+            client = MsfRpcClient(args.rpc_password, server=args.rpc_server, port=args.rpc_port, ssl=args.rpc_ssl)
 
             access_session(client, args.session_id, args.commands)
 
