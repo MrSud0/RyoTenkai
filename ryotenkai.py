@@ -5,6 +5,7 @@ import time
 import logging
 import subprocess
 from pymetasploit3.msfrpc import MsfRpcClient, MsfRpcError
+import json
 
 
 # Load configuration from config.ini
@@ -90,26 +91,52 @@ def run_exploit(client, module_name, options, regex=None):
 
         time.sleep(3)
         output = console.read()['data']
-
+        
+        filtered_output = None
         if regex:
             logging.info(f"Filtering output with regex: {regex}")
             matches = re.findall(regex, output, re.DOTALL)
-            output = "\n".join(matches)
+            filtered_output = "\n".join(matches)
 
         logging.info("Exploit run completed. Output:")
-        print(output)
+        logging.debug(output)
 
-        return output
+        # Prepare the structured JSON output
+        output_data = {
+            "status": "success",
+            "module": module_name,
+            "options": options,
+            "raw_output": output,
+            "filtered_output": filtered_output if filtered_output else "No match for regex"
+        }
+
+        # Output the result as JSON
+        print(json.dumps(output_data, indent=4))
+        return output_data
 
     except MsfRpcError as e:
         logging.error(f"Metasploit RPC error: {e}")
+
+        # Output error message as JSON
+        error_output = {
+            "status": "error",
+            "message": f"Metasploit RPC error: {str(e)}"
+        }
+        print(json.dumps(error_output, indent=4))
         return None
     except Exception as e:
         logging.error(f"An unexpected error occurred: {e}")
+
+        # Output error message as JSON
+        error_output = {
+            "status": "error",
+            "message": f"An unexpected error occurred: {str(e)}"
+        }
+        print(json.dumps(error_output, indent=4))
         return None
+
     
 # Functionality to start the RPC server
-# TODO rpc_user 
 def start_rpc_server(rpc_password, rpc_port):
     try:
         # Command to start Metasploit RPC server
@@ -117,17 +144,38 @@ def start_rpc_server(rpc_password, rpc_port):
         logging.info(f"Starting Metasploit RPC server with command: {' '.join(command)}")
         subprocess.run(command, check=True)
         logging.info("Metasploit RPC server started successfully.")
+
+        # Output success message as JSON
+        output = {
+            "status": "success",
+            "message": "Metasploit RPC server started successfully",
+            "details": {
+                "rpc_port": rpc_port,
+                "rpc_password": rpc_password
+            }
+        }
+        print(json.dumps(output, indent=4))
+
     except subprocess.CalledProcessError as e:
         logging.error(f"Failed to start Metasploit RPC server: {e}")
+
+        # Output error message as JSON
+        error_output = {
+            "status": "error",
+            "message": f"Failed to start Metasploit RPC server: {str(e)}"
+        }
+        print(json.dumps(error_output, indent=4))
+
 
 
 # Functionality 2: Poll active jobs
 def get_jobs(client):
     jobs = client.jobs.list
     if jobs:
-        logging.info(f"Active jobs: {jobs}")
+        logging.debug(f"Active jobs: {jobs}")
     else:
         logging.info("No active jobs.")
+    print(json.dumps(jobs))
     return jobs
 
 
@@ -135,10 +183,13 @@ def get_jobs(client):
 def get_sessions(client):
     sessions = client.sessions.list
     if sessions:
-        logging.info(f"Active sessions: {sessions}")
+        logging.debug(f"Active sessions: {sessions}")
     else:
         logging.info("No active sessions.")
+    # Print the sessions in JSON format for easy parsing by Ansible
+    print(json.dumps(sessions))
     return sessions
+
 
 # Functionality 4: Access session and run command
 def access_session(client, session_id, command):
@@ -150,10 +201,19 @@ def access_session(client, session_id, command):
         time.sleep(3) 
         result = session.read()
         logging.debug(f"Command result: {result}")
+
+        # Output the result as JSON
+        output = {
+            "session_id": session_id,
+            "command": command,
+            "result": result
+        }
+        print(json.dumps(output, indent=4))
         return result
     except MsfRpcError as e:
         logging.error(f"Error accessing session {session_id}: {e}")
         return None
+
 
 # Functionality 5: Generate a payload with msfvenom
 def generate_payload(format, payload, lhost, lport, output_file):
@@ -162,8 +222,31 @@ def generate_payload(format, payload, lhost, lport, output_file):
         logging.info(f"Running msfvenom: {' '.join(command)}")
         subprocess.run(command, check=True)
         logging.info(f"Payload saved to {output_file}")
+
+        # Output success message as JSON
+        output = {
+            "status": "success",
+            "message": f"Payload saved to {output_file}",
+            "details": {
+                "format": format,
+                "payload": payload,
+                "lhost": lhost,
+                "lport": lport,
+                "output_file": output_file
+            }
+        }
+        print(json.dumps(output, indent=4))
+
     except subprocess.CalledProcessError as e:
         logging.error(f"msfvenom error: {e}")
+
+        # Output error message as JSON
+        error_output = {
+            "status": "error",
+            "message": f"Failed to generate payload: {str(e)}"
+        }
+        print(json.dumps(error_output, indent=4))
+
         
         
 if __name__ == "__main__":
