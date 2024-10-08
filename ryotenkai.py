@@ -269,7 +269,7 @@ if __name__ == "__main__":
 
             options = {}
             for opt in args.option:
-                key, value = opt.split('=', 1)
+                key, value = opt.split(' ', 1)
                 options[key.strip()] = value.strip()
             run_exploit(client, args.module, options, args.regex)
 
