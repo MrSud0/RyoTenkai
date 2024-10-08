@@ -263,9 +263,10 @@ if __name__ == "__main__":
         start_rpc_server(args.rpc_password, args.rpc_port)
 
     else:
-        client = MsfRpcClient(args.msf_password, server=args.rpc_server, port=args.rpc_port, ssl=args.rpc_ssl)
 
         if args.command == 'run_module':
+            client = MsfRpcClient(args.msf_password, server=args.rpc_server, port=args.rpc_port, ssl=args.rpc_ssl)
+
             options = {}
             for opt in args.option:
                 key, value = opt.split('=', 1)
@@ -273,12 +274,18 @@ if __name__ == "__main__":
             run_exploit(client, args.module, options, args.regex)
 
         elif args.command == 'get_jobs':
+            client = MsfRpcClient(args.msf_password, server=args.rpc_server, port=args.rpc_port, ssl=args.rpc_ssl)
+
             get_jobs(client)
 
         elif args.command == 'get_sessions':
+            client = MsfRpcClient(args.msf_password, server=args.rpc_server, port=args.rpc_port, ssl=args.rpc_ssl)
+
             get_sessions(client)
 
         elif args.command == 'run_command':
+            client = MsfRpcClient(args.msf_password, server=args.rpc_server, port=args.rpc_port, ssl=args.rpc_ssl)
+
             access_session(client, args.session_id, args.session_command)
 
         elif args.command == 'generate_payload':
