@@ -48,7 +48,7 @@ def parse_arguments(config):
     # Access session and run command
     access_parser = subparsers.add_parser('run_command', help='Access a Metasploit session and run a command.')
     access_parser.add_argument('session_id', help='The ID of the session to access.')
-    access_parser.add_argument('session_command', help='The command to run in the session.')
+    access_parser.add_argument('commands', nargs='+', help='The command(s) to run in the session.')
     access_parser.add_argument('--msf-password', help='The password for the Metasploit RPC server.', default=config.get('msf_password', 'msfrpc'))
     access_parser.add_argument('--rpc-server', help='The Metasploit RPC server address.', default=config.get('rpc_server', '127.0.0.1'))
     access_parser.add_argument('--rpc-port', help='The Metasploit RPC server port.', type=int, default=int(config.get('rpc_port', 55552)))
@@ -191,28 +191,34 @@ def get_sessions(client):
     return sessions
 
 
-# Functionality 4: Access session and run command
-def access_session(client, session_id, command):
+# Functionality 4: Access session and run chained commands (e.g., open shell and run a PowerShell command)
+def access_session(client, session_id, command_sequence):
     try:
-        logging.info(f"Session ID: {session_id}, Command: {command}") 
+        logging.info(f"Session ID: {session_id}, Command Sequence: {command_sequence}")
         session = client.sessions.session(session_id)
         logging.debug(f"Accessing session {session}")
-        session.write(command)
-        time.sleep(3) 
-        result = session.read()
-        logging.debug(f"Command result: {result}")
+        
+        # Loop through each command in the sequence and execute
+        for command in command_sequence:
+            logging.info(f"Executing command: {command}")
+            session.write(command + "\n")
+            time.sleep(2)  # Adjust sleep time based on how long the command takes
+            result = session.read()
+            logging.debug(f"Command result: {result}")
 
-        # Output the result as JSON
+        # Output the result of the last command in JSON
         output = {
             "session_id": session_id,
-            "command": command,
-            "result": result
+            "command_sequence": command_sequence,
+            "final_result": result
         }
         print(json.dumps(output, indent=4))
         return result
+
     except MsfRpcError as e:
         logging.error(f"Error accessing session {session_id}: {e}")
         return None
+
 
 
 # Functionality 5: Generate a payload with msfvenom
@@ -286,7 +292,7 @@ if __name__ == "__main__":
         elif args.command == 'run_command':
             client = MsfRpcClient(args.msf_password, server=args.rpc_server, port=args.rpc_port, ssl=args.rpc_ssl)
 
-            access_session(client, args.session_id, args.session_command)
+            access_session(client, args.session_id, args.commands)
 
         elif args.command == 'generate_payload':
             generate_payload(args.format, args.payload, args.lhost, args.lport, args.output_file)
